@@ -13,25 +13,51 @@ import BookCount from "../components/BookCount";
 import CustomActionButton from "../components/CustomActionButton";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../assets/colors";
+import * as firebase from "firebase/app";
+import { snapshotToArray } from "../helpers/firebaseHelpers";
 
 class HomeScreen extends React.Component {
   constructor() {
     super();
     // 初期値の設定
     this.state = {
+      currentUser: {},
       totalCount: 0,
       readingCount: 0,
       readCount: 0,
       isAddNewBookVisible: false,
       textInputData: "",
       books: [],
+      booksReading: [],
+      booksRead: [],
     };
     console.log("constructor");
   }
 
-  componentDidMount() {
-    console.log("did mount");
-  }
+  componentDidMount = async () => {
+    const { navigation } = this.props;
+    const user = navigation.getParam("user");
+
+    const currentUserData = await firebase
+      .database()
+      .ref("users")
+      .child(user.uid)
+      .once("value");
+
+    const books = await firebase
+      .database()
+      .ref("books")
+      .child(user.uid)
+      .once("value");
+
+    const booksArray = snapshotToArray(books);
+    this.setState({
+      currentUser: currentUserData.val(),
+      books: booksArray,
+      booksReading: booksArray.filter((book) => !book.read),
+      booksRead: booksArray.filter((book) => book.read),
+    });
+  };
   componentDidUpdate() {
     console.log("update");
   }
@@ -52,35 +78,76 @@ class HomeScreen extends React.Component {
 
   // 本の追加ボタン（チェックマーク）を押したときの関数
   // 引数bookにはテキストインプットに入力された値が入る
-  addBook = (book) => {
-    this.setState(
-      (state, props) => ({
-        // 本の情報を更新
-        books: [...state.books, book],
-        // カウントの変更
-        totalCount: state.totalCount + 1,
-        readingCount: state.readingCount + 1,
-      }),
-      // 上記の後に実行
-      () => {
-        console.log(this.state.books);
-        this.hideAddNewBook();
+  addBook = async (book) => {
+    try {
+      const snapshot = await firebase
+        .database()
+        .ref("books")
+        .child(this.state.currentUser.uid)
+        .orderByChild("name")
+        .equalTo(book)
+        .once("value");
+      if (snapshot.exists()) {
+        alert("Unable to add as book already exists");
+      } else {
+        const key = await firebase
+          .database()
+          .ref("books")
+          .child(this.state.currentUser.uid)
+          .push().key;
+
+        const response = await firebase
+          .database()
+          .ref("books")
+          .child(this.state.currentUser.uid)
+          .child(key)
+          .set({ name: book, read: false });
+
+        this.setState(
+          (state, props) => ({
+            // 本の情報を更新
+            books: [...state.books, { name: book, read: false }],
+            booksReading: [...state.booksReading, { name: book, read: false }],
+            // カウントの変更
+            // totalCount: state.totalCount + 1,
+            // readingCount: state.readingCount + 1,
+          }),
+          // 上記の後に実行
+          () => {
+            console.log(this.state.books);
+            this.hideAddNewBook();
+          }
+        );
       }
-    );
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   // 本を読み終えたボタン(markAsRead)が押された時の関数
   // 引数selectedBookにはFlatListで選択された個別の情報が入ってくる
   markAsRead = (selectedBook, index) => {
     // book !== selectedBookなら残される(trueの場合)　book === selectedBookなら取り除かれる(falseの場合)
-    let newList = this.state.books.filter((book) => book !== selectedBook);
-
+    let books = this.state.books.map((book) => {
+      if (book.name == selectedBook.name) {
+        return { ...book, read: true };
+      }
+      return book;
+    });
+    let booksReading = this.state.booksReading.filter(
+      (book) => book.name !== selectedBook.name
+    );
     this.setState((prevState) => ({
       // 新しい配列
-      books: newList,
+      books: books,
+      booksReading: booksReading,
+      booksRead: [
+        ...prevState.booksRead,
+        { name: selectedBook.name, read: true },
+      ],
       // カウントの更新
-      readingCount: prevState.readingCount - 1,
-      readCount: prevState.readCount + 1,
+      // readingCount: prevState.readingCount - 1,
+      // readCount: prevState.readCount + 1,
     }));
   };
 
@@ -89,14 +156,18 @@ class HomeScreen extends React.Component {
   renderItem = (item, index) => (
     <View style={styles.listItemContainer}>
       <View style={styles.listItemTitleContainer}>
-        <Text>{item}</Text>
+        <Text>{item.name}</Text>
       </View>
-      <CustomActionButton
-        style={styles.markAsReadButton}
-        onPress={() => this.markAsRead(item, index)}
-      >
-        <Text style={styles.markAsReadButtonText}>Mark as read</Text>
-      </CustomActionButton>
+      {item.read ? (
+        <Ionicons name="ios-checkmark" color={colors.logoColor} size={30} />
+      ) : (
+        <CustomActionButton
+          style={styles.markAsReadButton}
+          onPress={() => this.markAsRead(item, index)}
+        >
+          <Text style={styles.markAsReadButtonText}>Mark as read</Text>
+        </CustomActionButton>
+      )}
     </View>
   );
 
@@ -151,9 +222,9 @@ class HomeScreen extends React.Component {
           </CustomActionButton>
         </View>
         <View style={styles.footer}>
-          <BookCount title="Total" count={this.state.totalCount} />
-          <BookCount title="Reading" count={this.state.readingCount} />
-          <BookCount title="Read" count={this.state.readCount} />
+          <BookCount title="Total Books" count={this.state.books.length} />
+          <BookCount title="Reading" count={this.state.booksReading.length} />
+          <BookCount title="Read" count={this.state.booksRead.length} />
         </View>
         <SafeAreaView />
       </View>

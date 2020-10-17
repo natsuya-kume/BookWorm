@@ -1,17 +1,11 @@
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
-import {
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  TextInput,
-  FlatList,
-} from "react-native";
+import React from "react";
 import HomeScreen from "./screens/HomeScreen";
-import SignUpScreen from "./screens/SignUpScreen";
+import LoginScreen from "./screens/LoginScreen";
 import SettingScreen from "./screens/SettingScreen";
+import colors from "./assets/colors";
+import * as firebase from "firebase/app";
+import { firebaseConfig } from "./config/config";
 
 import WelcomeScreen from "./screens/AppSwitchNavigator/WelcomeScreen";
 import {
@@ -22,24 +16,48 @@ import {
 } from "react-navigation";
 
 import { Ionicons } from "@expo/vector-icons";
-import CustomDrawerComponent from "./screens/DrawerNavigator.js/CustomDrawerComponent";
 
+import CustomDrawerComponent from "./screens/DrawerNavigator.js/CustomDrawerComponent";
+import LoadingScreen from "./screens/AppSwitchNavigator/LoadingScreen";
 // AppSwitchNavigator
 //  -WelcomeScreen
 //   -SignUpScreen
 // SignUpScreen
+class App extends React.Component {
+  constructor() {
+    super();
+    this.initializeFirebase();
+  }
+  initializeFirebase = () => {
+    firebase.initializeApp(firebaseConfig);
+  };
+  render() {
+    return <AppContainer />;
+  }
+}
 
-const App = () => <AppContainer />;
-
-const LoginStackNavigator = createStackNavigator({
-  WelcomeScreen: {
-    screen: WelcomeScreen,
-    navigationOptions: {
-      header: null,
+const LoginStackNavigator = createStackNavigator(
+  {
+    WelcomeScreen: {
+      screen: WelcomeScreen,
+      navigationOptions: {
+        header: null,
+      },
+    },
+    LoginScreen: {
+      screen: LoginScreen,
+      navigationOptions: {},
     },
   },
-  SignUpScreen,
-});
+  {
+    mode: "modal",
+    defaultNavigationOptions: {
+      headerStyle: {
+        backgroundColor: colors.bgMain,
+      },
+    },
+  }
+);
 
 const AppDrawerNavigator = createDrawerNavigator(
   {
@@ -64,6 +82,7 @@ const AppDrawerNavigator = createDrawerNavigator(
 );
 
 const AppSwitchNavigator = createSwitchNavigator({
+  LoadingScreen,
   LoginStackNavigator,
   AppDrawerNavigator,
 });
