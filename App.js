@@ -3,6 +3,9 @@ import React from "react";
 import HomeScreen from "./screens/HomeScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SettingScreen from "./screens/SettingScreen";
+import BooksReadingScreen from "./screens/HomeTabNavigator/BooksReadingScreen";
+import BooksReadScreen from "./screens/HomeTabNavigator/BooksReadScreen";
+
 import colors from "./assets/colors";
 import * as firebase from "firebase/app";
 import { firebaseConfig } from "./config/config";
@@ -13,6 +16,7 @@ import {
   createSwitchNavigator,
   createStackNavigator,
   createDrawerNavigator,
+  createBottomTabNavigator,
 } from "react-navigation";
 
 import { Ionicons } from "@expo/vector-icons";
@@ -59,10 +63,94 @@ const LoginStackNavigator = createStackNavigator(
   }
 );
 
-const AppDrawerNavigator = createDrawerNavigator(
+const HomeTabNavigator = createBottomTabNavigator(
   {
     HomeScreen: {
       screen: HomeScreen,
+      navigationOptions: {
+        tabBarLabel: "Total Books",
+      },
+    },
+    BooksReadingScreen: {
+      screen: BooksReadingScreen,
+      navigationOptions: {
+        tabBarLabel: "Books Reading",
+      },
+    },
+    BooksReadScreen: {
+      screen: BooksReadScreen,
+      navigationOptions: {
+        tabBarLabel: "Books Read",
+      },
+    },
+  },
+  {
+    tabBarOptions: {
+      style: {
+        backgroundColor: colors.bgMain,
+      },
+      activeTintColor: colors.logoColor,
+      inactiveTintColor: colors.bgTextInput,
+    },
+  }
+);
+
+HomeTabNavigator.navigationOptions = ({ navigation }) => {
+  const { routeName } = navigation.state.routes[navigation.state.index];
+
+  switch (routeName) {
+    case "HomeScreen":
+      return {
+        headerTitle: "Total Books",
+      };
+    case "BooksReadingScreen":
+      return {
+        headerTitle: "Reading Books",
+      };
+    case "BooksReadScreen":
+      return {
+        headerTitle: "Read Books",
+      };
+    default:
+      return {
+        headerTitle: "Book Worm",
+      };
+  }
+};
+
+const HomeStackNavigator = createStackNavigator(
+  {
+    HomeTabNavigator: {
+      screen: HomeTabNavigator,
+      navigationOptions: ({ navigation }) => {
+        return {
+          headerLeft: (
+            <Ionicons
+              style={{ marginLeft: 10 }}
+              name="ios-menu"
+              size={30}
+              color={colors.logoColor}
+              onPress={() => navigation.openDrawer()}
+            />
+          ),
+        };
+      },
+    },
+  },
+  {
+    defaultNavigationOptions: {
+      headerStyle: {
+        backgroundColor: colors.bgMain,
+      },
+      headerTintColor: colors.txtWhite,
+    },
+  }
+);
+
+const AppDrawerNavigator = createDrawerNavigator(
+  {
+    HomeStackNavigator: {
+      screen: HomeStackNavigator,
       navigationOptions: {
         title: "Home",
         drawerIcon: () => <Ionicons name="ios-home" size={24} />,
