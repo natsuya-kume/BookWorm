@@ -10,6 +10,9 @@ import colors from "./assets/colors";
 import * as firebase from "firebase/app";
 import { firebaseConfig } from "./config/config";
 
+import { Provider } from "react-redux";
+import store from "./redux/store";
+
 import WelcomeScreen from "./screens/AppSwitchNavigator/WelcomeScreen";
 import {
   createAppContainer,
@@ -36,7 +39,11 @@ class App extends React.Component {
     firebase.initializeApp(firebaseConfig);
   };
   render() {
-    return <AppContainer />;
+    return (
+      <Provider store={store}>
+        <AppContainer />
+      </Provider>
+    );
   }
 }
 

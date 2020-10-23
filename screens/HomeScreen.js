@@ -18,7 +18,8 @@ import colors from "../assets/colors";
 import * as firebase from "firebase/app";
 import { snapshotToArray } from "../helpers/firebaseHelpers";
 import ListItem from "../components/ListItem";
-
+import { connect } from "react-redux";
+import ListEmptyComponent from "../components/ListEmptyComponent";
 class HomeScreen extends React.Component {
   constructor() {
     super();
@@ -61,12 +62,8 @@ class HomeScreen extends React.Component {
     const booksArray = snapshotToArray(books);
     this.setState({
       currentUser: currentUserData.val(),
-      // 配列↓
-      books: booksArray,
-      // ---
-      booksReading: booksArray.filter((book) => !book.read),
-      booksRead: booksArray.filter((book) => book.read),
     });
+    this.props.loadBooks(booksArray.reverse());
   };
   componentDidUpdate() {
     console.log("update");
@@ -114,22 +111,7 @@ class HomeScreen extends React.Component {
           .child(this.state.currentUser.uid)
           .child(key)
           .set({ name: book, read: false });
-
-        this.setState(
-          (state, props) => ({
-            // 本の情報を更新
-            books: [...state.books, { name: book, read: false }],
-            booksReading: [...state.booksReading, { name: book, read: false }],
-            // カウントの変更
-            // totalCount: state.totalCount + 1,
-            // readingCount: state.readingCount + 1,
-          }),
-          // 上記の後に実行
-          () => {
-            console.log(this.state.books);
-            this.hideAddNewBook();
-          }
-        );
+        this.props.addBook({ name: book, read: false, key: key });
       }
     } catch (error) {
       console.log(error);
@@ -169,6 +151,7 @@ class HomeScreen extends React.Component {
         // readingCount: prevState.readingCount - 1,
         // readCount: prevState.readCount + 1,
       }));
+      this.props.markBookAsRead(selectedBook);
     } catch (error) {
       console.log(error);
     }
@@ -238,16 +221,12 @@ class HomeScreen extends React.Component {
             </View>
           )} */}
           <FlatList
-            data={this.state.books}
+            data={this.props.books.books}
             renderItem={({ item }, index) => this.renderItem(item, index)}
             keyExtractor={(item, index) => index.toString()}
             // リストが空の場合
             ListEmptyComponent={
-              <View style={styles.listEmptyComponent}>
-                <Text style={styles.listEmptyComponentText}>
-                  登録された本はありません
-                </Text>
-              </View>
+              <ListEmptyComponent text="登録された本がありません" />
             }
           />
           <Animatable.View
@@ -277,7 +256,23 @@ class HomeScreen extends React.Component {
   }
 }
 
-export default HomeScreen;
+const mapStateToProps = (state) => {
+  return {
+    books: state.books,
+  };
+};
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    loadBooks: (books) =>
+      dispatch({ type: "LOAD_BOOKS_FROM_SERVER", payload: books }),
+    addBook: (book) => dispatch({ type: "ADD_BOOK", payload: book }),
+    markBookAsRead: (book) =>
+      dispatch({ type: "MARK_BOOK_AS_READ", payload: book }),
+  };
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(HomeScreen);
 
 const styles = StyleSheet.create({
   container: {

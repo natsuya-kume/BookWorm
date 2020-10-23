@@ -1,23 +1,42 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-// import colors from "../assets/colors";
+import { View, Text, StyleSheet, FlatList } from "react-native";
+import colors from "../../assets/colors";
+import ListItem from "../../components/ListItem";
+import ListEmptyComponent from "../../components/ListEmptyComponent";
+import { connect } from "react-redux";
 
 class BooksReadScreen extends React.Component {
+  renderItem = (item) => {
+    return <ListItem item={item} />;
+  };
   render() {
     return (
       <View style={styles.container}>
-        <Text>BooksRead</Text>
+        <FlatList
+          data={this.props.books.booksRead}
+          renderItem={({ item }, index) => this.renderItem(item, index)}
+          keyExtractor={(item, index) => index.toString()}
+          // リストが空の場合
+          ListEmptyComponent={
+            <ListEmptyComponent text="読み終えた本はありません" />
+          }
+        />
       </View>
     );
   }
 }
 
-export default BooksReadScreen;
+const mapStateToProps = (state) => {
+  return {
+    books: state.books,
+  };
+};
+
+export default connect(mapStateToProps)(BooksReadScreen);
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: colors.bgMain,
   },
 });
