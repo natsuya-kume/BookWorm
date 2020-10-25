@@ -9,6 +9,7 @@ import {
   TextInput,
   FlatList,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import BookCount from "../components/BookCount";
@@ -64,6 +65,7 @@ class HomeScreen extends React.Component {
       currentUser: currentUserData.val(),
     });
     this.props.loadBooks(booksArray.reverse());
+    this.props.toggleIsLoadingBooks(false);
   };
   componentDidUpdate() {
     console.log("update");
@@ -89,6 +91,7 @@ class HomeScreen extends React.Component {
     this.textInputRef.setNativeProps({ text: "" });
     this.setState({ textInputData: "" });
     try {
+      this.props.toggleIsLoadingBooks(true);
       const snapshot = await firebase
         .database()
         .ref("books")
@@ -112,9 +115,11 @@ class HomeScreen extends React.Component {
           .child(key)
           .set({ name: book, read: false });
         this.props.addBook({ name: book, read: false, key: key });
+        this.props.toggleIsLoadingBooks(false);
       }
     } catch (error) {
       console.log(error);
+      this.props.toggleIsLoadingBooks(false);
     }
   };
 
@@ -123,6 +128,7 @@ class HomeScreen extends React.Component {
   markAsRead = async (selectedBook, index) => {
     // book !== selectedBookなら残される(trueの場合)　book === selectedBookなら取り除かれる(falseの場合)
     try {
+      this.props.toggleIsLoadingBooks(true);
       // readの値を変更
       await firebase
         .database()
@@ -152,8 +158,10 @@ class HomeScreen extends React.Component {
         // readCount: prevState.readCount + 1,
       }));
       this.props.markBookAsRead(selectedBook);
+      this.props.toggleIsLoadingBooks(false);
     } catch (error) {
       console.log(error);
+      this.props.toggleIsLoadingBooks(false);
     }
   };
 
@@ -191,6 +199,19 @@ class HomeScreen extends React.Component {
           <Text style={styles.headerTitle}>Book Worm</Text>
         </View> */}
         <View style={styles.container}>
+          {this.props.books.isLoadingBooks && (
+            <View
+              style={{
+                ...StyleSheet.absoluteFill,
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+                elevation: 1000,
+              }}
+            >
+              <ActivityIndicator size="large" color={colors.logoColor} />
+            </View>
+          )}
           <View style={styles.textInputContainer}>
             <TextInput
               onChangeText={(text) => this.setState({ textInputData: text })}
@@ -226,7 +247,9 @@ class HomeScreen extends React.Component {
             keyExtractor={(item, index) => index.toString()}
             // リストが空の場合
             ListEmptyComponent={
-              <ListEmptyComponent text="登録された本がありません" />
+              !this.props.books.isLoadingBooks && (
+                <ListEmptyComponent text="登録された本がありません" />
+              )
             }
           />
           <Animatable.View
@@ -269,6 +292,8 @@ const mapDispatchToProps = (dispatch) => {
     addBook: (book) => dispatch({ type: "ADD_BOOK", payload: book }),
     markBookAsRead: (book) =>
       dispatch({ type: "MARK_BOOK_AS_READ", payload: book }),
+    toggleIsLoadingBooks: (bool) =>
+      dispatch({ type: "TOGGLE_IS_LOADING_BOOKS", payload: bool }),
   };
 };
 

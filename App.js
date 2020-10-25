@@ -12,6 +12,7 @@ import { firebaseConfig } from "./config/config";
 
 import { Provider } from "react-redux";
 import store from "./redux/store";
+import BooksCountContainer from "./redux/containers/BooksCountContainer";
 
 import WelcomeScreen from "./screens/AppSwitchNavigator/WelcomeScreen";
 import {
@@ -76,18 +77,27 @@ const HomeTabNavigator = createBottomTabNavigator(
       screen: HomeScreen,
       navigationOptions: {
         tabBarLabel: "Total Books",
+        tabBarIcon: ({ tintColor }) => (
+          <BooksCountContainer color={tintColor} type="books" />
+        ),
       },
     },
     BooksReadingScreen: {
       screen: BooksReadingScreen,
       navigationOptions: {
         tabBarLabel: "Books Reading",
+        tabBarIcon: ({ tintColor }) => (
+          <BooksCountContainer color={tintColor} type="booksReading" />
+        ),
       },
     },
     BooksReadScreen: {
       screen: BooksReadScreen,
       navigationOptions: {
         tabBarLabel: "Books Read",
+        tabBarIcon: ({ tintColor }) => (
+          <BooksCountContainer color={tintColor} type="booksRead" />
+        ),
       },
     },
   },
