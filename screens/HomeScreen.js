@@ -14,13 +14,18 @@ import {
 import * as Animatable from "react-native-animatable";
 import BookCount from "../components/BookCount";
 import CustomActionButton from "../components/CustomActionButton";
+import ListEmptyComponent from "../components/ListEmptyComponent";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../assets/colors";
 import * as firebase from "firebase/app";
+import "firebase/storage";
 import { snapshotToArray } from "../helpers/firebaseHelpers";
 import ListItem from "../components/ListItem";
 import { connect } from "react-redux";
-import ListEmptyComponent from "../components/ListEmptyComponent";
+import { connectActionSheet } from "@expo/react-native-action-sheet";
+import { compose } from "redux";
+import Swipeout from "react-native-swipeout";
+import * as ImageHelpers from "../helpers/imageHelpers";
 class HomeScreen extends React.Component {
   constructor() {
     super();
@@ -165,21 +170,185 @@ class HomeScreen extends React.Component {
     }
   };
 
+  markAsUnRead = async (selectedBook, index) => {
+    try {
+      this.props.toggleIsLoadingBooks(true);
+      // readの値を変更
+      await firebase
+        .database()
+        .ref("books")
+        .child(this.state.currentUser.uid)
+        .child(selectedBook.key)
+        .update({ read: false });
+
+      this.props.markBookAsUnRead(selectedBook);
+      this.props.toggleIsLoadingBooks(false);
+    } catch (error) {
+      this.props.toggleIsLoadingBooks(false);
+      console.log(error);
+    }
+  };
+
+  deleteBook = async (selectedBook, index) => {
+    try {
+      this.props.toggleIsLoadingBooks(true);
+
+      await firebase
+        .database()
+        .ref("books")
+        .child(this.state.currentUser.uid)
+        .child(selectedBook.key)
+        .remove();
+
+      this.props.deleteBook(selectedBook);
+      this.props.toggleIsLoadingBooks(false);
+    } catch (error) {
+      console.log(error);
+      this.props.toggleIsLoadingBooks(false);
+    }
+  };
+
+  uploadImage = async (image, selectedBook) => {
+    const ref = firebase
+      .storage()
+      .ref("books")
+      .child(this.state.currentUser.uid)
+      .child(selectedBook.key);
+
+    try {
+      const blob = await ImageHelpers.preperBlob(image, url);
+
+      const snapshot = await ref.put(blob);
+
+      let downloadUrl = await ref.getDownloadURL();
+      await firebase
+        .database()
+        .ref("books")
+        .child(this.state.currentUser.uid)
+        .child(selectedBook.key)
+        .update({ image: downloadUrl });
+
+      blob.close();
+
+      return downloadUrl;
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  openImageLibrary = async (selectedBook) => {
+    const result = await ImageHelpers.openImageLibrary();
+
+    if (result) {
+      alert("Image Picked");
+      this.props.toggleIsLoadingBooks(true);
+      const downloadUrl = await this.uploadImage(result, selectedBook);
+      this.props.updateBookImage({ ...selectedBook, url: downloadUrl });
+      this.props.toggleIsLoadingBooks(false);
+    }
+  };
+
+  openCamera = async (selectedBook) => {
+    const result = await ImageHelpers.openCamera();
+    if (result) {
+      alert("Image clicked successfully");
+      const downloadUrl = await this.uploadImage(result, selectedBook);
+      this.props.updateBookImage({ ...selectedBook, url: downloadUrl });
+
+      this.props.toggleIsLoadingBooks(true);
+    }
+  };
+
+  addBookImage = (selectedBook) => {
+    const options = ["Select from Photos", "Camera", "Cancel"];
+
+    const cancelButtonIndex = 2;
+
+    this.props.showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex,
+      },
+      (buttonIndex) => {
+        if (buttonIndex == 0) {
+          this.openImageLibrary(selectedBook);
+        } else if (buttonIndex == 1) {
+          this.openCamera(selectedBook);
+        }
+      }
+    );
+  };
+
   // FlatListでbooks配列から取得した1つ1つの要素を画面に表示する関数
   // 引数には配列の個々の要素が入る
-  renderItem = (item, index) => (
-    <ListItem item={item}>
-      {item.read ? (
-        <Ionicons name="ios-checkmark" color={colors.logoColor} size={30} />
-      ) : (
-        <CustomActionButton
-          style={styles.markAsReadButton}
-          onPress={() => this.markAsRead(item, index)}
+  renderItem = (item, index) => {
+    let swipeoutButtons = [
+      {
+        text: "Delete",
+        component: (
+          <View
+            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+          >
+            <Ionicons name="ios-trash" size={24} color={colors.txtWhite} />
+          </View>
+        ),
+        backgroundColor: colors.bgDelete,
+        onPress: () => this.deleteBook(item, index),
+      },
+    ];
+
+    if (!item.read) {
+      swipeoutButtons.unshift({
+        text: "Mark Read",
+        component: (
+          <View
+            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text style={{ color: colors.txtWhite }}>Mark as Read</Text>
+          </View>
+        ),
+        backgroundColor: colors.bgSuccessDark,
+        onPress: () => this.markAsRead(item, index),
+      });
+    } else {
+      swipeoutButtons.unshift({
+        text: "Mark UnRead",
+        component: (
+          <View
+            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text style={{ color: colors.txtWhite }}>Mark UnRead</Text>
+          </View>
+        ),
+        backgroundColor: colors.bgUnread,
+        onPress: () => this.markAsUnRead(item, index),
+      });
+    }
+
+    return (
+      <Swipeout
+        backgroundColor={colors.bgMain}
+        autoClose={true}
+        right={swipeoutButtons}
+        style={{ marginVertical: 5, marginHorizontal: 5 }}
+      >
+        <ListItem
+          marginVertical={0}
+          item={item}
+          editable={true}
+          onPress={() => this.addBookImage(item)}
         >
-          <Text style={styles.markAsReadButtonText}>Mark as read</Text>
-        </CustomActionButton>
-      )}
-    </ListItem>
+          {item.read && (
+            <Ionicons
+              style={{ marginRight: 5 }}
+              name="ios-checkmark"
+              color={colors.logoColor}
+              size={30}
+            />
+          )}
+        </ListItem>
+      </Swipeout>
+    );
     // <View style={styles.listItemContainer}>
     //   <View style={styles.imageContainer}>
     //     <Image source={require("../assets/icon.png")} style={styles.image} />
@@ -189,7 +358,7 @@ class HomeScreen extends React.Component {
     //   </View>
 
     // </View>
-  );
+  };
 
   render() {
     return (
@@ -292,12 +461,21 @@ const mapDispatchToProps = (dispatch) => {
     addBook: (book) => dispatch({ type: "ADD_BOOK", payload: book }),
     markBookAsRead: (book) =>
       dispatch({ type: "MARK_BOOK_AS_READ", payload: book }),
+    markBookAsUnRead: (book) =>
+      dispatch({ type: "MARK_BOOK_AS_UNREAD", payload: book }),
     toggleIsLoadingBooks: (bool) =>
       dispatch({ type: "TOGGLE_IS_LOADING_BOOKS", payload: bool }),
+    deleteBook: (book) => dispatch({ type: "DELETE_BOOK", payload: book }),
+    updateBookImage: (book) =>
+      dispatch({ type: "UPDATE_BOOK_IMAGE", payload: book }),
   };
 };
+const warpper = compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  connectActionSheet
+);
 
-export default connect(mapStateToProps, mapDispatchToProps)(HomeScreen);
+export default warpper(HomeScreen);
 
 const styles = StyleSheet.create({
   container: {

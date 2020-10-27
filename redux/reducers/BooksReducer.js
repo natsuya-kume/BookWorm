@@ -3,6 +3,7 @@ const initialState = {
   booksReading: [],
   booksRead: [],
   isLoadingBooks: true,
+  image: null,
 };
 
 const books = (state = initialState, action) => {
@@ -38,6 +39,52 @@ const books = (state = initialState, action) => {
       return {
         ...state,
         isLoadingBooks: action.payload,
+      };
+    case "MARK_BOOK_AS_UNREAD":
+      return {
+        ...state,
+        books: state.books.map((book) => {
+          if (books.name == action.payload.name) {
+            return { ...book, read: false };
+          }
+          return book;
+        }),
+        booksRead: state.booksRead.filter(
+          (book) => book.name !== action.payload.name
+        ),
+        booksReading: [...state.booksReading, action.payload],
+      };
+    case "DELETE_BOOK":
+      return {
+        books: state.books.filter((book) => book.name !== action.payload.name),
+        booksRead: state.booksRead.filter(
+          (book) => book.name !== action.payload.name
+        ),
+        booksReading: state.booksReading.filter(
+          (book) => book.name !== action.payload.name
+        ),
+      };
+    case "UPDATE_BOOK_IMAGE":
+      return {
+        ...state,
+        books: state.books.map((book) => {
+          if (book.name == action.payload.name) {
+            return { ...book, image: action.payload.url };
+          }
+          return book;
+        }),
+        booksReading: state.booksReading.map((book) => {
+          if (book.name == action.payload.name) {
+            return { ...book, image: action.payload.url };
+          }
+          return book;
+        }),
+        booksRead: state.booksRead.map((book) => {
+          if (book.name == action.payload.name) {
+            return { ...book, image: action.payload.url };
+          }
+          return book;
+        }),
       };
     default:
       return state;

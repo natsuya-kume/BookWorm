@@ -27,6 +27,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import CustomDrawerComponent from "./screens/DrawerNavigator.js/CustomDrawerComponent";
 import LoadingScreen from "./screens/AppSwitchNavigator/LoadingScreen";
+import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 // AppSwitchNavigator
 //  -WelcomeScreen
 //   -SignUpScreen
@@ -42,7 +43,9 @@ class App extends React.Component {
   render() {
     return (
       <Provider store={store}>
-        <AppContainer />
+        <ActionSheetProvider>
+          <AppContainer />
+        </ActionSheetProvider>
       </Provider>
     );
   }
